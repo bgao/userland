@@ -72,7 +72,7 @@ static void jpegencoder_buffer_callback (MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T
       }
       if(bytes_written != buffer->length) error("Could not write all bytes jpeg", 0);
    }
-  
+
    if(buffer->flags & MMAL_BUFFER_HEADER_FLAG_FRAME_END) {
       mjpeg_cnt++;
       video_frame++;
@@ -199,11 +199,11 @@ static void h264encoder_buffer_callback (MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T
     analyse_vectors(buffer);
   }
   else if(buffering_toggle) {
-    
+
     int space_in_buff = cb_len - cb_wptr;
     int copy_to_end = space_in_buff > buffer->length ? buffer->length : space_in_buff;
     int copy_to_start = buffer->length - copy_to_end;
-    
+
     if(buffer->flags & MMAL_BUFFER_HEADER_FLAG_CONFIG) {
       if(header_wptr + buffer->length > sizeof(header_bytes)) {
         printLog("DEBUG 1: %i, %i\n", header_wptr, (int)buffer->length);
@@ -319,7 +319,7 @@ static void h264encoder_buffer_callback (MMAL_PORT_T *port, MMAL_BUFFER_HEADER_T
 
 void cam_set_annotationV3 (char *filename_temp, MMAL_BOOL_T enable) {
    MMAL_PARAMETER_CAMERA_ANNOTATE_V3_T anno = {{MMAL_PARAMETER_ANNOTATE, sizeof(MMAL_PARAMETER_CAMERA_ANNOTATE_V3_T)}};
-   
+
    if (filename_temp != 0) strcpy(anno.text, filename_temp);
    anno.enable = enable;
    anno.show_shutter = 0;
@@ -337,7 +337,7 @@ void cam_set_annotationV3 (char *filename_temp, MMAL_BOOL_T enable) {
    anno.custom_text_U = cfg_val[c_anno3_custom_text_U];
    anno.custom_text_V = cfg_val[c_anno3_custom_text_V];
    anno.text_size = cfg_val[c_anno_text_size];
-   
+
    status = mmal_port_parameter_set(camera->control, &anno.hdr);
    if(status != MMAL_SUCCESS) error("Could not set annotation", 0);
 }
@@ -365,7 +365,7 @@ void thumb_create(char *from_filename, char source) {
    char *thumb_name = 0;
    char *f = 0, *s = 0, *t = 0;
    unsigned int xcount=0;
-   
+
    //Check if thumbnail needed for this type of source
    if (cfg_stru[c_thumb_gen] != 0 && strchr(cfg_stru[c_thumb_gen], source) != NULL) {
       if (source == 'v')
@@ -374,7 +374,7 @@ void thumb_create(char *from_filename, char source) {
          xcount = image2_cnt;
       else if (source == 't')
          xcount = image2_cnt;
-      
+
       asprintf(&filename, "%s", from_filename);
       if (strncmp(filename, cfg_stru[c_media_path], strlen(cfg_stru[c_media_path])) == 0) {
          f = filename + strlen(cfg_stru[c_media_path]) + 1;
@@ -411,7 +411,7 @@ void capt_img (void) {
    }
    createMediaPath(filename_image);
    jpegoutput2_file = fopen(filename_image, "wb");
-   if(jpegoutput2_file != NULL){ 
+   if(jpegoutput2_file != NULL){
       status = mmal_port_parameter_set_boolean(camera->control, MMAL_PARAMETER_CAPTURE_STATS_PASS, cfg_val[c_stat_pass]);
       if(status != MMAL_SUCCESS) printLog("Could not set stat_pass\n");
       status = mmal_port_parameter_set_boolean(camera->output[2], MMAL_PARAMETER_CAPTURE, 1);
@@ -456,7 +456,7 @@ void start_video(unsigned char prepare_buf) {
         status = mmal_connection_destroy(con_cam_pre);
         if(status != MMAL_SUCCESS) {error("Could not destroy connection camera -> video encoder", 0); return;}
         status = mmal_connection_create(&con_cam_pre, camera->output[0], null_sink->input[0], MMAL_CONNECTION_FLAG_TUNNELLING | MMAL_CONNECTION_FLAG_ALLOCATION_ON_INPUT);
-        if(status != MMAL_SUCCESS) {error("Could not create connection camera -> null sink", 0); return;}      
+        if(status != MMAL_SUCCESS) {error("Could not create connection camera -> null sink", 0); return;}
         status = mmal_connection_enable(con_cam_pre);
         if(status != MMAL_SUCCESS) {error("Could not enable connection camera -> null sink", 0); return;}
       }
@@ -522,7 +522,7 @@ void stop_video(unsigned char stop_buf) {
   //pthread_mutex_lock(&v_mutex);
   char *filename_temp;
   char background;
-  
+
   if(v_capturing || stop_buf) {
     v_capturing = 0;
     video_stoptime = 0;
@@ -616,7 +616,7 @@ void cam_set_buffer () {
   cam_stop_buffering ();
   if(cfg_val[c_video_buffer] != 0) {
     int count = ((long long)cfg_val[c_video_bitrate]/8 * (long long)cfg_val[c_video_buffer]) / 1000;
-    
+
     cb_buff = (char *) malloc(count);
     if(cb_buff == NULL) {
       error("Unable to allocate circular buffer", 0);
@@ -759,12 +759,46 @@ void cam_set_roi () {
    if(status != MMAL_SUCCESS) error("Could not set sensor area", 0);
 }
 
+void cam_set_stereo () {
+  MMAL_PARAMETER_STEREOSCOPIC_MODE_T stereo = { {MMAL_PARAMETER_STEREOSCOPIC_MODE, sizeof(stereo)},
+                                            MMAL_STEREOSCOPIC_MODE_NONE, MMAL_FALSE, MMAL_FALSE };
+
+  char* stereo_mode = cfg_stru[c_stereo_mode];
+  if (stereo_mode) {
+    if (stereo_mode == "off")
+      stereo.mode = MMAL_STEREOSCOPIC_MODE_NONE;
+    else if (stereo_mode == "sbs")
+      stereo.mode = MMAL_STEREOSCOPIC_MODE_SIDE_BY_SIDE;
+    else if (stereo_mode == "tb")
+      stereo.mode = MMAL_STEREOSCOPIC_MODE_TOP_BOTTOM;
+  }
+  if (cfg_val[c_stereo_dcmt])
+    stereo.decimate = cfg_val[c_stereo_dcmt];
+  if (cfg_val[c_stereo_swap])
+    stereo.swap_eyes = cfg_val[c_stereo_swap];
+  status = mmal_port_parameter_set(camera->output[0], &stereo.hdr);
+  if (status != MMAL_SUCCESS) {
+    error("Could not set stereoscopic mode (0)", 0);
+    return;
+  }
+  status = mmal_port_parameter_set(camera->output[1], &stereo.hdr);
+  if (status != MMAL_SUCCESS) {
+    error("Could not set stereoscopic mode (1)", 0);
+    return;
+  }
+  status = mmal_port_parameter_set(camera->output[2], &stereo.hdr);
+  if (status != MMAL_SUCCESS) {
+    error("Could not set stereoscopic mode (2)", 0);
+    return;
+  }
+}
+
 void cam_set(int key) {
    int control = 0;
    unsigned int id;
    MMAL_RATIONAL_T value;
    value.den = 100;
-   
+
    switch(key) {
       case c_sharpness:
          control = 1;id = MMAL_PARAMETER_SHARPNESS;break;
@@ -820,8 +854,11 @@ void cam_set(int key) {
       case c_sensor_region_x:
          cam_set_roi();
          break;
+      case c_stereo_mode:
+         cam_set_stereo();
+         break;
    }
-   
+
    switch(control) {
       case 1: //rational
          value.num = cfg_val[key];
@@ -871,7 +908,7 @@ void start_all (int load_conf) {
       if (cfg_stru[c_user_config] != 0)
          read_config(cfg_stru[c_user_config],0);
    }
-   
+
    //
    // create camera
    //
@@ -931,7 +968,7 @@ void start_all (int load_conf) {
    if(status != MMAL_SUCCESS) error("Could not set video format", 1);
    if(camera->output[1]->buffer_num < 3)
       camera->output[1]->buffer_num = 3;
-  
+
    format = camera->output[2]->format;
    format->encoding = MMAL_ENCODING_OPAQUE;
    format->es->video.width = cfg_val[c_image_width];
@@ -960,7 +997,7 @@ void start_all (int load_conf) {
    if((motion_width-1)*16 != cfg_val[c_video_width]) motion_width++;
    motion_height = cfg_val[c_video_height]/16;
    if(motion_height*16 != cfg_val[c_video_height]) motion_height++;
-   
+
    if(cfg_val[c_vector_preview]) {
      motion_img_width = VCOS_ALIGN_UP(motion_width, 32);
      motion_img_height = VCOS_ALIGN_UP(motion_height, 16);
@@ -977,7 +1014,7 @@ void start_all (int load_conf) {
      format->flags = MMAL_ES_FORMAT_FLAG_FRAMED;
      status = mmal_port_format_commit(jpegencoder->input[0]);
      if(status != MMAL_SUCCESS) error("Could not set image input format", 1);
-     
+
      jpegencoder->input[0]->buffer_num = jpegencoder->input[0]->buffer_num_min;
      jpegencoder->input[0]->buffer_size = jpegencoder->input[0]->buffer_size_min;
      pool_jpegencoder_in = mmal_pool_create(jpegencoder->input[0]->buffer_num, jpegencoder->input[0]->buffer_size);
@@ -1072,7 +1109,7 @@ void start_all (int load_conf) {
    if(status != MMAL_SUCCESS) error("Could not set video port format", 1);
 
    status = mmal_port_parameter_set_boolean(h264encoder->input[0], MMAL_PARAMETER_VIDEO_IMMUTABLE_INPUT, 1);
-   if(status != MMAL_SUCCESS) error("Could not set immutable flag", 1); 
+   if(status != MMAL_SUCCESS) error("Could not set immutable flag", 1);
 
    status = mmal_port_parameter_set_boolean(h264encoder->output[0], MMAL_PARAMETER_VIDEO_ENCODE_INLINE_HEADER, 0);
    if(status != MMAL_SUCCESS) error("Could not set inline flag", 1);
@@ -1093,7 +1130,7 @@ void start_all (int load_conf) {
    height_temp -= height_temp%16;
    status = mmal_component_create("vc.ril.resize", &resizer);
    if(status != MMAL_SUCCESS && status != MMAL_ENOSYS) error("Could not create image resizer", 1);
-  
+
    format = resizer->output[0]->format;
    format->es->video.width = cfg_val[c_width];
    format->es->video.height = height_temp;
@@ -1108,7 +1145,7 @@ void start_all (int load_conf) {
 
    status = mmal_component_enable(resizer);
    if(status != MMAL_SUCCESS) error("Could not enable image resizer", 1);
-   
+
    //
    // create null-sink
    //
@@ -1116,7 +1153,7 @@ void start_all (int load_conf) {
    if(status != MMAL_SUCCESS) error("Could not create null_sink", 1);
    status = mmal_component_enable(null_sink);
    if(status != MMAL_SUCCESS) error("Could not enable null_sink", 1);
-   
+
    //
    // create splitter
    //
@@ -1127,23 +1164,23 @@ void start_all (int load_conf) {
 
    //
    // connect
-   //  
+   //
    if(!cfg_val[c_vector_preview] && cfg_val[c_motion_detection]) {
      status = mmal_connection_create(&con_cam_pre, camera->output[0], splitter->input[0], MMAL_CONNECTION_FLAG_TUNNELLING | MMAL_CONNECTION_FLAG_ALLOCATION_ON_INPUT);
      if(status != MMAL_SUCCESS) error("Could not create connection camera -> splitter", 1);
      status = mmal_connection_enable(con_cam_pre);
      if(status != MMAL_SUCCESS) error("Could not enable connection camera -> splitter", 1);
-     
+
      status = mmal_connection_create(&con_spli_res, splitter->output[0], resizer->input[0], MMAL_CONNECTION_FLAG_TUNNELLING | MMAL_CONNECTION_FLAG_ALLOCATION_ON_INPUT);
      if(status != MMAL_SUCCESS) error("Could not create connection splitter -> resizer", 1);
      status = mmal_connection_enable(con_spli_res);
      if(status != MMAL_SUCCESS) error("Could not enable connection splitter -> resizer", 1);
-     
+
      status = mmal_connection_create(&con_res_jpeg, resizer->output[0], jpegencoder->input[0], MMAL_CONNECTION_FLAG_TUNNELLING | MMAL_CONNECTION_FLAG_ALLOCATION_ON_INPUT);
      if(status != MMAL_SUCCESS) error("Could not create connection resizer -> encoder", 1);
      status = mmal_connection_enable(con_res_jpeg);
      if(status != MMAL_SUCCESS) error("Could not enable connection resizer -> encoder", 1);
-     
+
      status = mmal_connection_create(&con_spli_h264, splitter->output[1], h264encoder->input[0], MMAL_CONNECTION_FLAG_TUNNELLING | MMAL_CONNECTION_FLAG_ALLOCATION_ON_INPUT);
      if(status != MMAL_SUCCESS) error("Could not create connection splitter -> video converter", 1);
      status = mmal_connection_enable(con_spli_h264);
@@ -1154,7 +1191,7 @@ void start_all (int load_conf) {
      if(status != MMAL_SUCCESS) error("Could not create connection camera -> resizer", 1);
      status = mmal_connection_enable(con_cam_pre);
      if(status != MMAL_SUCCESS) error("Could not enable connection camera -> resizer", 1);
-     
+
      status = mmal_connection_create(&con_res_jpeg, resizer->output[0], jpegencoder->input[0], MMAL_CONNECTION_FLAG_TUNNELLING | MMAL_CONNECTION_FLAG_ALLOCATION_ON_INPUT);
      if(status != MMAL_SUCCESS) error("Could not create connection resizer -> encoder", 1);
      status = mmal_connection_enable(con_res_jpeg);
@@ -1165,13 +1202,13 @@ void start_all (int load_conf) {
      if(status != MMAL_SUCCESS) error("Could not create connection camera -> video converter", 1);
      status = mmal_connection_enable(con_cam_pre);
      if(status != MMAL_SUCCESS) error("Could not enable connection camera -> video converter", 1);
-     
+
      status = mmal_port_enable(jpegencoder->input[0], jpegencoder_input_callback);
      if(status != MMAL_SUCCESS) error("Could not enable jpeg input port", 1);
      status = mmal_port_enable(jpegencoder->control, jpegencoder_input_callback);
      if(status != MMAL_SUCCESS) error("Could not enable jpeg control port", 1);
    }
-  
+
    h264_enable_output();
 
    status = mmal_port_enable(jpegencoder->output[0], jpegencoder_buffer_callback);
@@ -1189,7 +1226,7 @@ void start_all (int load_conf) {
    if(status != MMAL_SUCCESS) error("Could not create connection camera -> encoder", 1);
    status = mmal_connection_enable(con_cam_jpeg);
    if(status != MMAL_SUCCESS) error("Could not enable connection camera -> encoder", 1);
-  
+
    status = mmal_port_enable(jpegencoder2->output[0], jpegencoder2_buffer_callback);
    if(status != MMAL_SUCCESS) error("Could not enable jpeg port 2", 1);
    max = mmal_queue_length(pool_jpegencoder2->queue);
@@ -1200,7 +1237,7 @@ void start_all (int load_conf) {
       status = mmal_port_send_buffer(jpegencoder2->output[0], jpegbuffer2);
       if(status != MMAL_SUCCESS) error("Could not send buffers to jpeg port 2", 1);
    }
-  
+
    //
    // settings
    //
@@ -1223,8 +1260,9 @@ void start_all (int load_conf) {
    cam_set(c_colour_effect_en);
    cam_set(c_hflip);
    cam_set(c_sensor_region_x);
+   cam_set(c_stereo_mode);
    cam_set_annotation();
-   
+
    setup_motiondetect();
    //pthread_mutex_unlock(&v_mutex);
 
@@ -1320,4 +1358,3 @@ void stop_all (void) {
   }
   //pthread_mutex_unlock(&v_mutex);
 }
-

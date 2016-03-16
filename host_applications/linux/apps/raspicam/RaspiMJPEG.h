@@ -31,8 +31,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 /**
  * \file RaspiMJPEG.h
  **/
-#define VERSION "5.4.2" 
- 
+#define VERSION "5.4.2"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -119,8 +119,9 @@ typedef enum cfgkey_type
    c_motion_noise,c_motion_threshold,c_motion_image,c_motion_startframes,c_motion_stopframes,c_motion_pipe,
    c_user_config,c_log_file,c_watchdog_interval,c_watchdog_errors, c_h264_buffers,
    c_error_soft, c_error_hard, c_end_img, c_start_vid, c_end_vid, c_end_box, c_do_cmd,
-   c_camera_num,c_stat_pass,c_user_annotate
-   } cfgkey_type; 
+   c_camera_num,c_stat_pass,c_user_annotate,
+   c_stereo_mode,c_stereo_dcmt,c_stereo_swap
+   } cfgkey_type;
 
 struct timespec currTime;
 struct tm *localTime;
@@ -160,6 +161,7 @@ void cam_set_ie ();
 void cam_set_ce ();
 void cam_set_flip ();
 void cam_set_roi ();
+void cam_set_stereo ();
 void cam_set(int key);
 void h264_enable_output ();
 void start_all (int load_conf);

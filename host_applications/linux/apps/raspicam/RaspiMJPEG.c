@@ -91,7 +91,8 @@ char *cfg_key[] ={
    "motion_noise","motion_threshold","motion_image","motion_startframes","motion_stopframes","motion_pipe",
    "user_config","log_file","watchdog_interval","watchdog_errors","h264_buffers",
    "error_soft", "error_hard", "end_img", "start_vid", "end_vid", "end_box", "do_cmd",
-   "camera_num","stat_pass","user_annotate"
+   "camera_num","stat_pass","user_annotate",
+   "stereo_mode","stereo_dcmt","stereo_swap"
 };
 
 
@@ -115,11 +116,11 @@ int getKey(char *key) {
 }
 
 void addValue(int keyI, char *value, int both){
-   
+
    free(cfg_stru[keyI]);
    cfg_stru[keyI] = 0;
    if (both) {free(cfg_strd[keyI]);cfg_strd[keyI] = 0;}
-   
+
    if (value == NULL || strlen(value) == 0) {
       cfg_val[keyI] = 0;
    } else {
@@ -137,7 +138,7 @@ void addValue(int keyI, char *value, int both){
             if(strcmp(value, "idle") == 0) {
                val = 0;
                idle = 1;
-            }else if(strcmp(value, "standard") == 0) { 
+            }else if(strcmp(value, "standard") == 0) {
                val = 1;
                idle = 0;
             };
@@ -205,7 +206,7 @@ void read_config(char *cfilename, int type) {
          }
       }
       if(line) free(line);
-   }   
+   }
 }
 
 void monitor() {
@@ -250,7 +251,7 @@ int main (int argc, char* argv[]) {
 
    //default base media path
    asprintf(&cfg_stru[c_media_path], "%s", "/var/www/media");
-   
+
    //
    // read configs and init
    //
@@ -265,9 +266,9 @@ int main (int argc, char* argv[]) {
       createPath(bpath, cfg_stru[c_base_path]);
       free(bpath);
    }
-   
+
    printLog("RaspiMJPEG Version %s\n", VERSION);
-   
+
    if(cfg_val[c_autostart]) start_all(0);
 
    //
@@ -294,13 +295,13 @@ int main (int argc, char* argv[]) {
    }
 
    updateStatus();
- 
+
    struct sigaction action;
    memset(&action, 0, sizeof(struct sigaction));
    action.sa_handler = term;
    sigaction(SIGTERM, &action, NULL);
    sigaction(SIGINT, &action, NULL);
-   
+
    //Clear out anything in FIFO first
    do {
       fd = open(cfg_stru[c_control_file], O_RDONLY | O_NONBLOCK);
@@ -308,8 +309,8 @@ int main (int argc, char* argv[]) {
       fcntl(fd, F_SETFL, 0);
       length = read(fd, readbuf, 60);
       close(fd);
-   } while (length != 0); 
-  
+   } while (length != 0);
+
   //Send restart signal to scheduler
   send_schedulecmd("9");
    // Main forever loop
@@ -382,10 +383,10 @@ int main (int argc, char* argv[]) {
       }
       usleep(100000);
    }
-         
+
    close(fd);
    if(system("killall motion") == -1) error("Could not stop external motion", 1);
-  
+
    printLog("SIGINT/SIGTERM received, stopping\n");
    //
    // tidy up
