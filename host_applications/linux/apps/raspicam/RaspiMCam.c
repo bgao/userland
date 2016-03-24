@@ -765,11 +765,11 @@ void cam_set_stereo () {
 
   char* stereo_mode = cfg_stru[c_stereo_mode];
   if (stereo_mode) {
-    if (stereo_mode == "off")
+    if (strncmp(stereo_mode, "off",3) == 0)
       stereo.mode = MMAL_STEREOSCOPIC_MODE_NONE;
-    else if (stereo_mode == "sbs")
+    else if (strncmp(stereo_mode, "sbs", 3) == 0)
       stereo.mode = MMAL_STEREOSCOPIC_MODE_SIDE_BY_SIDE;
-    else if (stereo_mode == "tb")
+    else if (strncmp(stereo_mode, "tb", 2) == 0)
       stereo.mode = MMAL_STEREOSCOPIC_MODE_TOP_BOTTOM;
   }
   if (cfg_val[c_stereo_dcmt])
@@ -914,6 +914,10 @@ void start_all (int load_conf) {
    //
    status = mmal_component_create(MMAL_COMPONENT_DEFAULT_CAMERA, &camera);
    if(status != MMAL_SUCCESS) error("Could not create camera", 1);
+
+   // set stereo camera before setting camera number
+   cam_set_stereo();
+
    if (cfg_val[c_camera_num] > 0) {
       MMAL_PARAMETER_INT32_T cam_num = {{MMAL_PARAMETER_CAMERA_NUM, sizeof(cam_num)}, cfg_val[c_camera_num] - 1};
       status = mmal_port_parameter_set(camera->control, &cam_num.hdr);
@@ -1260,7 +1264,7 @@ void start_all (int load_conf) {
    cam_set(c_colour_effect_en);
    cam_set(c_hflip);
    cam_set(c_sensor_region_x);
-   cam_set(c_stereo_mode);
+   // cam_set(c_stereo_mode);
    cam_set_annotation();
 
    setup_motiondetect();

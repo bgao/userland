@@ -44,8 +44,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "RaspiMJPEG.h"
 
 void process_cmd(char *readbuf, int length) {
-   typedef enum pipe_cmd_type{ca,im,tl,px,bo,tv,an,as,at,ac,ab,sh,co,br,sa,is,vs,rl,ec,em,wb,mm,ie,ce,ro,fl,ri,ss,qu,pv,bi,ru,md,sc,rs,bu,mn,mt,mi,mb,me,mx,mf,vm,vp,wd,sy,cn,st} pipe_cmd_type;
-   char pipe_cmds[] = "ca,im,tl,px,bo,tv,an,as,at,ac,ab,sh,co,br,sa,is,vs,rl,ec,em,wb,mm,ie,ce,ro,fl,ri,ss,qu,pv,bi,ru,md,sc,rs,bu,mn,mt,mi,mb,me,mx,mf,vm,vp,wd,sy,cn,st";
+  typedef enum pipe_cmd_type{ca,im,tl,px,bo,tv,an,as,at,ac,ab,sh,co,br,sa,is,vs,rl,ec,em,wb,mm,ie,ce,ro,fl,ri,ss,qu,pv,bi,ru,md,sc,rs,bu,mn,mt,mi,mb,me,mx,mf,vm,vp,wd,sy,cn,st,sm} pipe_cmd_type;
+   char pipe_cmds[] = "ca,im,tl,px,bo,tv,an,as,at,ac,ab,sh,co,br,sa,is,vs,rl,ec,em,wb,mm,ie,ce,ro,fl,ri,ss,qu,pv,bi,ru,md,sc,rs,bu,mn,mt,mi,mb,me,mx,mf,vm,vp,wd,sy,cn,st,sm";
    pipe_cmd_type pipe_cmd;
    int parcount;
    char pars[128][10];
@@ -54,16 +54,16 @@ void process_cmd(char *readbuf, int length) {
    char par[MAX_COMMAND_LEN];
    char *parstring=0, *temp;
    int key = -1;
-   
+
    if (length < 2 || length > (MAX_COMMAND_LEN - 2)) return;
-   
+
    //Get cmd
    strncpy(cmd, readbuf, 2);
     //find 2 letter command and translate into enum
    temp = strstr(pipe_cmds, cmd);
    if (temp == NULL) return;
    pipe_cmd = (pipe_cmd_type)((temp - pipe_cmds) / 3);
-  
+
    if(length > 3) {
       strcpy(par, readbuf + 3);
       par[length-3] = 0;
@@ -81,7 +81,7 @@ void process_cmd(char *readbuf, int length) {
    } else {
       par0 = 0;
    }
-   
+
    switch(pipe_cmd) {
       case ca:
          if(par0 == 1) {
@@ -194,8 +194,8 @@ void process_cmd(char *readbuf, int length) {
          key = c_rotation;
          break;
       case fl:
-         if(par0 & 1) addUserValue(c_hflip, "1"); else addUserValue(c_hflip, "0"); 
-         if((par0 >> 1) & 1) addUserValue(c_vflip, "1"); else addUserValue(c_vflip, "0"); 
+         if(par0 & 1) addUserValue(c_hflip, "1"); else addUserValue(c_hflip, "0");
+         if((par0 >> 1) & 1) addUserValue(c_vflip, "1"); else addUserValue(c_vflip, "0");
          cam_set(c_hflip);
          break;
       case ri:
@@ -328,11 +328,15 @@ void process_cmd(char *readbuf, int length) {
          addUserValue(c_camera_num, pars[0]);
          start_all(0);
          break;
+      case sm:
+        stop_all();
+        addUserValue(c_stereo_mode, pars[0]);
+        start_all(0);
       default:
          printLog("Unrecognised pipe command\n");
          break;
    }
-   
+
    //Action any key settings
    if (key >= 0) {
       if (key < 1000) {
@@ -350,14 +354,14 @@ void process_cmd(char *readbuf, int length) {
 void exec_macro(char *macro, char *filename) {
    char *cmd, *macropath;
    char async;
-   
+
    if (macro != NULL) {
       if (filename != NULL && *macro == '&') {
          asprintf(&macropath,"%s/%s", cfg_stru[c_macros_path], macro + 1);
          async = '&';
       } else {
          asprintf(&macropath,"%s/%s", cfg_stru[c_macros_path], macro);
-         async = ' ';   
+         async = ' ';
       }
       if (access(macropath, F_OK ) != -1) {
          if (filename != NULL)
@@ -375,4 +379,3 @@ void exec_macro(char *macro, char *filename) {
       printLog("Missing macro definition\n");
    }
 }
-
